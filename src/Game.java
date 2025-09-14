@@ -18,21 +18,22 @@ public class Game {
     public void startGame() {
         Scanner scanner = new Scanner(System.in);
         // fills the first value for the game
-        fillARandomCell();
+        fillARandomCell();fillARandomCell();
+        System.out.println("here");
+        System.out.println(this);
         while(true) {
             System.out.println("""
-                        Moves:
-                            0. Move the board left
-                            1. Move the board right
-                            2. Move the board top
-                            3. Move the board bottom
-                            4. Exit
+                    Moves:
+                        0. Move the board left
+                        1. Move the board right
+                        2. Move the board top
+                        3. Move the board bottom
+                        4. Exit
                     """);
-            fillARandomCell();
-            System.out.println(this);
             int direction = scanner.nextInt();
-            if(!moveBoard(direction)) {
-                System.out.println(this);
+            boolean move = moveBoard(direction);
+            System.out.println(this);
+            if(!move) {
                 if(!quitByUser)
                     System.out.println("Game Over -_- ");
                 else
@@ -117,6 +118,24 @@ public class Game {
         }
     }
 
+    private void moveBoardLeft(String[] currCol) {
+        for(int j = 0; j < BOARD_SIZE; j++) {
+            String currValue = currCol[j];
+            if(currValue.equals(getHyphen()))   continue;
+            for (int k = j + 1; k < BOARD_SIZE; k++) {
+                if(currCol[k].equals(getHyphen()))   continue;
+
+                if(currCol[k].equals(currValue)) {
+                    currCol[j] = getNextValue(currCol[j]);
+                    currCol[k] = getHyphen();
+                }
+                break;
+            }
+        }
+
+        moveNumbersLeft(currCol);
+    }
+
     private void moveNumberRight(String[] row) {
         int write = BOARD_SIZE - 1;
 
@@ -130,9 +149,12 @@ public class Game {
 
     private void moveBoardTop() {
         for (int j = 0; j < BOARD_SIZE; j++) {
+            String[] currCol = new String[BOARD_SIZE];
             for (int i = 0; i < BOARD_SIZE - 1; i++) {
-
+                currCol[i] = board[i][j];
             }
+
+            moveBoardLeft(currCol);
         }
     }
 
@@ -148,13 +170,15 @@ public class Game {
         ArrayList<Cell> emptyCells = new ArrayList<>();
         for (int i = 0; i < BOARD_SIZE; i++)
             for (int j = 0; j < BOARD_SIZE; j++)
-                emptyCells.add(new Cell(i, j));
+                if(board[i][j].equals(getHyphen()))
+                    emptyCells.add(new Cell(i, j));
 
         if(emptyCells.isEmpty())    return false;
 
         int randomIndex = (int) (Math.random() * emptyCells.size());
         int randomRow = emptyCells.get(randomIndex).getRow();
         int randomCol = emptyCells.get(randomIndex).getCol();
+        System.out.println(randomRow + "  " +randomCol + "  " + board[randomRow][randomCol]);
         board[randomRow][randomCol] = getFormatedValue("2");
         return true;
     }
