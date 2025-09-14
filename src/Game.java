@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.InputMismatchException;
 import java.util.Scanner;
 
 public class Game {
@@ -6,18 +7,25 @@ public class Game {
     private final int BOARD_SIZE;
     private final int WINING_NUMBER;
     private boolean quitByUser;
+    private boolean won;
+    private static Game game = null;
 
-    Game() {
+    private Game() {
         BOARD_SIZE = 4;
         WINING_NUMBER = 2048;
         board = new String[BOARD_SIZE][BOARD_SIZE];
         populateBoard();
     }
 
+    public static synchronized Game getInstance() {
+        if(game == null)    game = new Game();
+        return game;
+    }
 
     public void startGame() {
         Scanner scanner = new Scanner(System.in);
-        // fills the first value for the game
+        int direction;
+        // fills two values for the starting game
         fillARandomCell();fillARandomCell();
         System.out.println("here");
         System.out.println(this);
@@ -30,19 +38,37 @@ public class Game {
                         3. Move the board bottom
                         4. Exit
                     """);
-            int direction = scanner.nextInt();
+            try {
+                direction = scanner.nextInt();
+            } catch(InputMismatchException e) {
+                System.out.println("Input Mismatch, Re-Enter");
+                scanner.nextLine(); // add the input mismatch to buffer
+                continue;
+            }
             boolean move = moveBoard(direction);
+            if(quitByUser) {
+                System.out.println("Exiting.....");
+                break;
+            }
             System.out.println(this);
+            if(won) {
+                System.out.println("Congratulations, You are the first person to won " +
+                                    "the game made by Masood...  Here is a gift 🍫\n" +
+                                    "PS: you cant eat it cuz its digital");
+                break;
+            }
             if(!move) {
-                if(!quitByUser)
-                    System.out.println("Game Over -_- ");
-                else
-                    System.out.println("Exiting.....");
+                System.out.println("Game Over -_- ");
                 break;
             }
         }
     }
 
+    /*
+    * Moves the board based on the user input
+    * returns true, if there is an empty cell
+    * left to fill after the move.
+    * */
     private boolean moveBoard(int direction) {
         switch (direction) {
             case 0 -> moveBoardLeft();
@@ -58,6 +84,10 @@ public class Game {
         return fillARandomCell();
     }
 
+    /*
+    * Returns a formatted String based on
+    * the WINING_NUMBER length
+    *  */
     private String getFormatedValue(String value) {
         int n = value.length();
         int winingNumberLength = getNumberLength(WINING_NUMBER);
@@ -89,6 +119,24 @@ public class Game {
         }
     }
 
+    private void moveBoardLeft(String[] currCol) {
+        for(int j = 0; j < BOARD_SIZE; j++) {
+            String currValue = currCol[j];
+            if(currValue.equals(getHyphen()))   continue;
+            for (int k = j + 1; k < BOARD_SIZE; k++) {
+                if(currCol[k].equals(getHyphen()))   continue;
+
+                if(currCol[k].equals(currValue)) {
+                    currCol[j] = getNextValue(currCol[j]);
+                    currCol[k] = getHyphen();
+                }
+                break;
+            }
+        }
+
+        moveNumbersLeft(currCol);
+    }
+
     private void moveNumbersLeft(String[] row) {
         int write = 0;
         for(int read = 0; read < BOARD_SIZE; read++)
@@ -118,12 +166,12 @@ public class Game {
         }
     }
 
-    private void moveBoardLeft(String[] currCol) {
-        for(int j = 0; j < BOARD_SIZE; j++) {
+    private void moveBoardRight(String[] currCol) {
+        for (int j = BOARD_SIZE - 1; j > 0; j--) {
             String currValue = currCol[j];
             if(currValue.equals(getHyphen()))   continue;
-            for (int k = j + 1; k < BOARD_SIZE; k++) {
-                if(currCol[k].equals(getHyphen()))   continue;
+            for(int k = j - 1; k >= 0; k--) {
+                if(currCol[k].equals(getHyphen()))    continue;
 
                 if(currCol[k].equals(currValue)) {
                     currCol[j] = getNextValue(currCol[j]);
@@ -132,8 +180,7 @@ public class Game {
                 break;
             }
         }
-
-        moveNumbersLeft(currCol);
+        moveNumberRight(currCol);
     }
 
     private void moveNumberRight(String[] row) {
@@ -146,26 +193,40 @@ public class Game {
         while (write >= 0)     row[write--] = getHyphen();
     }
 
-
     private void moveBoardTop() {
         for (int j = 0; j < BOARD_SIZE; j++) {
             String[] currCol = new String[BOARD_SIZE];
-            for (int i = 0; i < BOARD_SIZE - 1; i++) {
+            for (int i = 0; i < BOARD_SIZE; i++) {
                 currCol[i] = board[i][j];
             }
-
+//            System.out.println(Arrays.toString(currCol));
             moveBoardLeft(currCol);
+//            System.out.println("After \n" + Arrays.toString(currCol));
+            for(int i = 0; i < BOARD_SIZE; i++) {
+                board[i][j] = currCol[i];
+            }
         }
     }
 
     private void moveBoardBottom() {
         for (int j = 0; j < BOARD_SIZE; j++){
-            for(int i = BOARD_SIZE - 1; i >= 0; i--) {
+            String[] currCol = new String[BOARD_SIZE];
+            for(int i = 0; i < BOARD_SIZE; i++) {
+                currCol[i] = board[i][j];
+            }
 
+            moveBoardRight(currCol);
+
+            for(int i = 0; i < BOARD_SIZE; i++) {
+                board[i][j] = currCol[i];
             }
         }
     }
 
+    /*
+        return true if there is an empty cell else returns false
+        TODO: ADD PROBABILITY FOR OCCURRENCE OF 2 AND 4
+     */
     private boolean fillARandomCell() {
         ArrayList<Cell> emptyCells = new ArrayList<>();
         for (int i = 0; i < BOARD_SIZE; i++)
@@ -178,32 +239,32 @@ public class Game {
         int randomIndex = (int) (Math.random() * emptyCells.size());
         int randomRow = emptyCells.get(randomIndex).getRow();
         int randomCol = emptyCells.get(randomIndex).getCol();
-        System.out.println(randomRow + "  " +randomCol + "  " + board[randomRow][randomCol]);
+        System.out.println("Empty Cell : " + randomRow + "  " + randomCol + "  " + board[randomRow][randomCol]);
         board[randomRow][randomCol] = getFormatedValue("2");
         return true;
     }
 
+    /*
+        generate hyphen spaces for all the cells
+    */
     private void populateBoard() {
         for(int i = 0; i < BOARD_SIZE; i++)
             for(int j = 0; j < BOARD_SIZE; j++)
-                board[i][j] = "2";
-        board[0] = new String[] {
-                "8", "4", getHyphen(), "4"
-        };
+                board[i][j] = getHyphen();
     }
 
     private int getNumberLength(int number) {
-//        System.out.println(number + " " + ((int)Math.log10(number) + 1));
-        return (int)Math.log10(number) + 1;
+        int spaceAround = 2;
+        return (int)Math.log10(number) + 1 + spaceAround;
     }
 
     private String getHyphen() {
-        int totalLength = getNumberLength(WINING_NUMBER);
-        int spaceAtFront = totalLength / 2;
-        int spacesAtBack = totalLength - spaceAtFront - 1;
-        if(spacesAtBack == -1 || spaceAtFront == -1)
-            System.out.println("form getHyphen" + spacesAtBack + " " + spaceAtFront);
-        return " ".repeat(spaceAtFront) + "-" + " ".repeat(spacesAtBack);
+        int winingNumberLength = getNumberLength(WINING_NUMBER);
+        int spacesToAdd        = winingNumberLength - 1;
+        int spacesAtFront      = spacesToAdd / 2;
+        int spacesAtBack       = spacesToAdd - spacesAtFront - 1;
+        return " ".repeat(Math.max(0, spacesAtFront)) +
+                "-" + " ".repeat(Math.max(0, spacesAtBack));
     }
 
     private String getNextValue(String value) {
@@ -213,17 +274,20 @@ public class Game {
                 ));
     }
 
+    @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("------------------------\n");
-        // TODO : MAKE THE FORMATING LOOK GUD.
+        sb.append("-".repeat((getNumberLength(WINING_NUMBER) + 4) * 2)).append("\n");
         for(String[] row : board) {
             for(String value : row) {
-                sb.append(getFormatedValue(value));
+                if(value.equals(getFormatedValue(String.valueOf(WINING_NUMBER)))) {
+                    won = true;
+                }
+                sb.append(value);
             }
             sb.append("\n");
         }
-        sb.append("-------------------------");
+        sb.append("-".repeat((getNumberLength(WINING_NUMBER) + 4) * 2));
         return sb.toString();
     }
 }
